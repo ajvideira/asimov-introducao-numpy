@@ -1,7 +1,16 @@
+import random
 import os
 
 import numpy as np
-import random
+
+MOVIMENTOS = {
+    "A": (0, 0, -1),
+    "D": (0, 0, 1),
+    "W": (0, -1, 0),
+    "S": (0, 1, 0),
+    "Z": (-1, 0, 0),
+    "X": (1, 0, 0),
+}
 
 def gerar_caminho_serpentina(andares, linhas, colunas):
     for andar in range(andares):
@@ -19,37 +28,37 @@ def imprimir_modo_jogo():
     print("1-Jogo automático (Máquina joga)")
     print("2-Jogo manual (Jogador joga)")
 
-def iniciar_parametros():
-    iniciar_tabuleiro()
-    posicionar_tesouro()
+def definir_shape() -> tuple[int, int, int]:
+    print("Definindo shape...")
+    while True:
+        andares = ler_inteiro("Andares (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        linhas = ler_inteiro("Linhas (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        colunas = ler_inteiro("Colunas (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
-def iniciar_tabuleiro():
-    print("Iniciando tabuleiro...")
+        if andares == linhas == colunas == 1:
+            print("O tabuleiro não pode ser 1x1x1. Configure novamente.")
+        else:
+            return andares, linhas, colunas
 
-    global shape, tabuleiro
+def criar_tabuleiro(shape: tuple[int, int, int]) -> np.ndarray:
+    print("Criando tabuleiro...")
 
-    eixo_x = ler_inteiro("Eixo X (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    eixo_y = ler_inteiro("Eixo Y (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    eixo_z = ler_inteiro("Eixo Z (1-10): ", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    return np.zeros(shape, dtype=int)
 
-    shape = (eixo_x, eixo_y, eixo_z)
-
-    tabuleiro = np.zeros(shape, dtype=int)
-
-def posicionar_tesouro():
+def posicionar_tesouro(shape: tuple[int, int, int]) -> tuple[int, int, int]:
     print("Posicionando tesouro...")
 
-    global tesouro
+    if shape == (1, 1, 1):
+        raise ValueError("O tabuleiro não pode ser 1x1x1")
 
     while True:
-        tesouro = (
-            random.randint(0, shape[0] - 1),
-            random.randint(0, shape[1] - 1),
-            random.randint(0, shape[2] - 1)
-        )
+        andar = random.randint(0, shape[0] - 1)
+        linha = random.randint(0, shape[1] - 1)
+        coluna = random.randint(0, shape[2] - 1)
 
-        if tesouro != (0, 0, 0):
+        if (andar, linha, coluna) != (0, 0, 0):
             break
+    return andar, linha, coluna
 
 def ler_inteiro(mensagem: str, valores_permitidos: list[int]) -> int:
     while True:
@@ -70,95 +79,80 @@ def imprimir_menu_navegacao() -> None:
     print("Z - Descer de andar")
     print("X - Subir de andar")
 
-def escolher_proxima_posicao(posicao_anterior: tuple[int, int, int]) -> tuple[int, int, int]:
+def escolher_proxima_posicao(posicao_anterior: tuple[int, int, int], shape: tuple[int, int, int]) -> tuple[int, int, int]:
+    andar, linha, coluna = posicao_anterior
+    andares, linhas, colunas = shape
+
     while True:
-        try:
-            posicao = input("Escolha: ")
+        comando = input("Escolha: ").strip().upper()
+        deslocamento = MOVIMENTOS.get(comando)
 
-            print(str.upper(posicao))
+        if deslocamento is None:
+            print("Comando inválido.")
+            continue
 
-            if str.upper(posicao) == "A":
-                if posicao_anterior[2] == 0:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0], posicao_anterior[1], posicao_anterior[2]-1
-            elif str.upper(posicao) == "D":
-                if posicao_anterior[2] == shape[2] - 1:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0], posicao_anterior[1], posicao_anterior[2]+1
-            elif str.upper(posicao) == "W":
-                if posicao_anterior[1] == 0:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0], posicao_anterior[1]-1, posicao_anterior[2]
-            elif str.upper(posicao) == "S":
-                if posicao_anterior[1] == shape[1] - 1:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0], posicao_anterior[1]+1, posicao_anterior[2]
-            elif str.upper(posicao) == "Z":
-                if posicao_anterior[0] == 0:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0]-1, posicao_anterior[1], posicao_anterior[2]
-            elif str.upper(posicao) == "X":
-                if posicao_anterior[0] == shape[0] - 1:
-                    raise ValueError
-                else:
-                    return posicao_anterior[0]+1, posicao_anterior[1], posicao_anterior[2]
-            else:
-                raise ValueError
-        except ValueError:
-            print("Comando inválido")
+        delta_andar, delta_linha, delta_coluna = deslocamento
 
-shape: tuple[int, int, int]
-tabuleiro: np.ndarray
-tesouro: tuple[int, int, int]
+        novo_andar = andar + delta_andar
+        nova_linha = linha + delta_linha
+        nova_coluna = coluna + delta_coluna
 
-imprimir_titulo()
-iniciar_parametros()
+        if (
+            0 <= novo_andar < andares
+            and 0 <= nova_linha < linhas
+            and 0 <= nova_coluna < colunas
+        ):
+            return novo_andar, nova_linha, nova_coluna
+        else:
+            print("Movimento sai do tabuleiro.")
 
-imprimir_modo_jogo()
-opcao = ler_inteiro("Escolha sua opção (1,2): ", [1,2])
+def main() -> None:
+    imprimir_titulo()
 
-passos = 0
-posicao_anterior = (0,0,0)
+    shape: tuple[int, int, int] = definir_shape()
+    tabuleiro: np.ndarray = criar_tabuleiro(shape)
+    tesouro: tuple[int, int, int] = posicionar_tesouro(shape)
 
-if opcao == 1:
+    imprimir_modo_jogo()
+    opcao = ler_inteiro("Escolha sua opção (1,2): ", [1, 2])
 
-    for posicao in gerar_caminho_serpentina(*shape):
-        tabuleiro[posicao_anterior] = 0
-        tabuleiro[posicao] = 1
-        posicao_anterior = posicao
-        print(f"Localização atual: {posicao}")
-        print(tabuleiro)
+    passos = 0
+    posicao_anterior = (0, 0, 0)
 
-        if posicao == tesouro:
-            print(f"Tesouro encontrado na posição {tesouro}")
-            tesouro_encontrado = True
-            break
+    if opcao == 1:
+        for posicao in gerar_caminho_serpentina(*shape):
+            tabuleiro[posicao_anterior] = 0
+            tabuleiro[posicao] = 1
+            posicao_anterior = posicao
+            print(f"Localização atual: {posicao}")
+            print(tabuleiro)
 
-        passos += 1
-else:
-    while True:
-        os.system("clear")
-        tabuleiro[posicao_anterior] = 1
-        print(tabuleiro)
+            if posicao == tesouro:
+                print(f"Tesouro encontrado na posição {tesouro}")
+                break
 
-        if posicao_anterior == tesouro:
-            break
+            passos += 1
+    else:
+        while True:
+            if os.environ.get("TERM"):
+                os.system("clear")
 
-        passos += 1
+            tabuleiro[posicao_anterior] = 1
+            print(tabuleiro)
 
-        if posicao_anterior == tesouro:
-            break
+            if posicao_anterior == tesouro:
+                print(f"Tesouro encontrado na posição {tesouro}")
+                break
 
-        imprimir_menu_navegacao()
-        posicao = escolher_proxima_posicao(posicao_anterior)
+            imprimir_menu_navegacao()
+            posicao = escolher_proxima_posicao(posicao_anterior, shape)
 
-        tabuleiro[posicao_anterior] = 0
-        posicao_anterior = posicao
+            tabuleiro[posicao_anterior] = 0
+            posicao_anterior = posicao
 
+            passos += 1
 
-print(f"Total de passos necessários: {passos}")
+    print(f"Total de passos necessários: {passos}")
+
+if __name__ == "__main__":
+    main()
